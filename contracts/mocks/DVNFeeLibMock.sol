@@ -22,7 +22,8 @@ contract DVNFeeLibMock is Ownable, IDVNFeeLib {
     uint256 private immutable nativeDecimalsRate;
 
     // @dev oz4/5 breaking change... Ownable constructor
-    constructor(uint256 _nativeDecimalsRate) Ownable(msg.sender) {
+    constructor(uint256 _nativeDecimalsRate) {
+        _transferOwnership(msg.sender);
         nativeDecimalsRate = _nativeDecimalsRate;
     }
 

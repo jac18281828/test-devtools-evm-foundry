@@ -2,27 +2,31 @@
 pragma solidity ^0.8.22;
 
 // @dev oz4/5 breaking change... Ownable constructor
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { Transfer } from "@layerzerolabs/lz-evm-protocol-v2/contracts/libs/Transfer.sol";
-import { ExecutorOptions } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/ExecutorOptions.sol";
+import {Transfer} from "@layerzerolabs/lz-evm-protocol-v2/contracts/libs/Transfer.sol";
+import {ExecutorOptions} from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/ExecutorOptions.sol";
 
-import { ILayerZeroPriceFeed } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/interfaces/ILayerZeroPriceFeed.sol";
-import { IExecutor } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/interfaces/IExecutor.sol";
-import { IExecutorFeeLib } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/interfaces/IExecutorFeeLib.sol";
+import {ILayerZeroPriceFeed} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/interfaces/ILayerZeroPriceFeed.sol";
+import {IExecutor} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/interfaces/IExecutor.sol";
+import {IExecutorFeeLib} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/interfaces/IExecutorFeeLib.sol";
 
 contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
     using ExecutorOptions for bytes;
 
     uint256 private immutable nativeDecimalsRate;
 
-    // @dev oz4/5 breaking change... Ownable constructor
-    constructor() Ownable(msg.sender) {
+    constructor() {
+        _transferOwnership(msg.sender);
         nativeDecimalsRate = 1e18;
     }
 
     // ================================ OnlyOwner ================================
-    function withdrawToken(address _token, address _to, uint256 _amount) external onlyOwner {
+    function withdrawToken(
+        address _token,
+        address _to,
+        uint256 _amount
+    ) external onlyOwner {
         // transfers native if _token is address(0x0)
         Transfer.nativeOrToken(_token, _to, _amount);
     }
@@ -33,7 +37,8 @@ contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
         IExecutor.DstConfig calldata _dstConfig,
         bytes calldata _options
     ) external returns (uint256 fee) {
-        if (_dstConfig.lzReceiveBaseGas == 0) revert Executor_EidNotSupported(_params.dstEid);
+        if (_dstConfig.lzReceiveBaseGas == 0)
+            revert Executor_EidNotSupported(_params.dstEid);
 
         (uint256 totalDstAmount, uint256 totalGas) = _decodeExecutorOptions(
             _isV1Eid(_params.dstEid),
@@ -49,7 +54,11 @@ contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
             uint128 priceRatio,
             uint128 priceRatioDenominator,
             uint128 nativePriceUSD
-        ) = ILayerZeroPriceFeed(_params.priceFeed).estimateFeeOnSend(_params.dstEid, _params.calldataSize, totalGas);
+        ) = ILayerZeroPriceFeed(_params.priceFeed).estimateFeeOnSend(
+                _params.dstEid,
+                _params.calldataSize,
+                totalGas
+            );
 
         fee = _applyPremiumToGas(
             totalGasFee,
@@ -72,7 +81,8 @@ contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
         IExecutor.DstConfig calldata _dstConfig,
         bytes calldata _options
     ) external view returns (uint256 fee) {
-        if (_dstConfig.lzReceiveBaseGas == 0) revert Executor_EidNotSupported(_params.dstEid);
+        if (_dstConfig.lzReceiveBaseGas == 0)
+            revert Executor_EidNotSupported(_params.dstEid);
 
         (uint256 totalDstAmount, uint256 totalGas) = _decodeExecutorOptions(
             _isV1Eid(_params.dstEid),
@@ -87,7 +97,11 @@ contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
             uint128 priceRatio,
             uint128 priceRatioDenominator,
             uint128 nativePriceUSD
-        ) = ILayerZeroPriceFeed(_params.priceFeed).estimateFeeByEid(_params.dstEid, _params.calldataSize, totalGas);
+        ) = ILayerZeroPriceFeed(_params.priceFeed).estimateFeeByEid(
+                _params.dstEid,
+                _params.calldataSize,
+                totalGas
+            );
 
         fee = _applyPremiumToGas(
             totalGasFee,
@@ -124,25 +138,33 @@ contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
         bool v1Eid = _v1Eid; // stack too deep
         uint256 lzReceiveGas;
         while (cursor < _options.length) {
-            (uint8 optionType, bytes calldata option, uint256 newCursor) = _options.nextExecutorOption(cursor);
+            (
+                uint8 optionType,
+                bytes calldata option,
+                uint256 newCursor
+            ) = _options.nextExecutorOption(cursor);
             cursor = newCursor;
 
             if (optionType == ExecutorOptions.OPTION_TYPE_LZRECEIVE) {
-                (uint128 gas, uint128 value) = ExecutorOptions.decodeLzReceiveOption(option);
+                (uint128 gas, uint128 value) = ExecutorOptions
+                    .decodeLzReceiveOption(option);
 
                 // endpoint v1 does not support lzReceive with value
-                if (v1Eid && value > 0) revert Executor_UnsupportedOptionType(optionType);
+                if (v1Eid && value > 0)
+                    revert Executor_UnsupportedOptionType(optionType);
 
                 dstAmount += value;
                 lzReceiveGas += gas;
             } else if (optionType == ExecutorOptions.OPTION_TYPE_NATIVE_DROP) {
-                (uint128 nativeDropAmount, ) = ExecutorOptions.decodeNativeDropOption(option);
+                (uint128 nativeDropAmount, ) = ExecutorOptions
+                    .decodeNativeDropOption(option);
                 dstAmount += nativeDropAmount;
             } else if (optionType == ExecutorOptions.OPTION_TYPE_LZCOMPOSE) {
                 // endpoint v1 does not support lzCompose
                 if (v1Eid) revert Executor_UnsupportedOptionType(optionType);
 
-                (, uint128 gas, uint128 value) = ExecutorOptions.decodeLzComposeOption(option);
+                (, uint128 gas, uint128 value) = ExecutorOptions
+                    .decodeLzComposeOption(option);
                 if (gas == 0) revert Executor_ZeroLzComposeGasProvided();
 
                 dstAmount += value;
@@ -150,14 +172,18 @@ contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
                 // to simplify the quoting, we add lzComposeBaseGas for each lzComposeOption received
                 // if the same index has multiple compose options, the gas will be added multiple times
                 totalGas += gas + _lzComposeBaseGas;
-            } else if (optionType == ExecutorOptions.OPTION_TYPE_ORDERED_EXECUTION) {
+            } else if (
+                optionType == ExecutorOptions.OPTION_TYPE_ORDERED_EXECUTION
+            ) {
                 ordered = true;
             } else {
                 revert Executor_UnsupportedOptionType(optionType);
             }
         }
-        if (cursor != _options.length) revert Executor_InvalidExecutorOptions(cursor);
-        if (dstAmount > _nativeCap) revert Executor_NativeAmountExceedsCap(dstAmount, _nativeCap);
+        if (cursor != _options.length)
+            revert Executor_InvalidExecutorOptions(cursor);
+        if (dstAmount > _nativeCap)
+            revert Executor_NativeAmountExceedsCap(dstAmount, _nativeCap);
         if (lzReceiveGas == 0) revert Executor_ZeroLzReceiveGasProvided();
         totalGas += lzReceiveGas;
 
@@ -180,8 +206,13 @@ contract ExecutorFeeLibMock is Ownable, IExecutorFeeLib {
         if (_nativePriceUSD == 0 || _marginUSD == 0) {
             return feeWithMultiplier;
         }
-        uint256 feeWithMargin = (_marginUSD * nativeDecimalsRate) / _nativePriceUSD + _fee;
-        return feeWithMargin > feeWithMultiplier ? feeWithMargin : feeWithMultiplier;
+        uint256 feeWithMargin = (_marginUSD * nativeDecimalsRate) /
+            _nativePriceUSD +
+            _fee;
+        return
+            feeWithMargin > feeWithMultiplier
+                ? feeWithMargin
+                : feeWithMultiplier;
     }
 
     // includes value and nativeDrop

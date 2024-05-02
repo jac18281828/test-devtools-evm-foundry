@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.20;
 
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 abstract contract MultiSigMock {
     enum Errors {
@@ -18,7 +18,10 @@ abstract contract MultiSigMock {
 
     error MultiSig_OnlySigner();
     error MultiSig_QuorumIsZero();
-    error MultiSig_SignersSizeIsLessThanQuorum(uint64 signersSize, uint64 quorum);
+    error MultiSig_SignersSizeIsLessThanQuorum(
+        uint64 signersSize,
+        uint64 quorum
+    );
     error MultiSig_UnorderedSigners();
     error MultiSig_StateAlreadySet(address signer, bool active);
 
@@ -37,7 +40,10 @@ abstract contract MultiSigMock {
             revert MultiSig_QuorumIsZero();
         }
         if (_signers.length < _quorum) {
-            revert MultiSig_SignersSizeIsLessThanQuorum(uint64(_signers.length), _quorum);
+            revert MultiSig_SignersSizeIsLessThanQuorum(
+                uint64(_signers.length),
+                _quorum
+            );
         }
         address lastSigner = address(0);
         for (uint256 i = 0; i < _signers.length; i++) {
@@ -78,7 +84,10 @@ abstract contract MultiSigMock {
         emit UpdateQuorum(_quorum);
     }
 
-    function verifySignatures(bytes32 _hash, bytes calldata _signatures) public view returns (bool, Errors) {
+    function verifySignatures(
+        bytes32 _hash,
+        bytes calldata _signatures
+    ) public view returns (bool, Errors) {
         if (_signatures.length != uint256(quorum) * 65) {
             return (false, Errors.SignatureError);
         }
@@ -89,20 +98,31 @@ abstract contract MultiSigMock {
         for (uint256 i = 0; i < quorum; i++) {
             bytes calldata signature = _signatures[i * 65:(i + 1) * 65];
             // @dev oz4/5 breaking change... return value from tryRecover
-            (address currentSigner, ECDSA.RecoverError error /*bytes32(signature.length)*/, ) = ECDSA.tryRecover(
-                messageDigest,
-                signature
-            );
+            (
+                address currentSigner,
+                ECDSA.RecoverError error /*bytes32(signature.length)*/
+            ) = ECDSA.tryRecover(messageDigest, signature);
 
-            if (error != ECDSA.RecoverError.NoError) return (false, Errors.SignatureError);
-            if (currentSigner <= lastSigner) return (false, Errors.DuplicatedSigner); // prevent duplicate signatures
-            if (!signers[currentSigner]) return (false, Errors.SignerNotInCommittee); // signature is not in committee
+            if (error != ECDSA.RecoverError.NoError)
+                return (false, Errors.SignatureError);
+            if (currentSigner <= lastSigner)
+                return (false, Errors.DuplicatedSigner); // prevent duplicate signatures
+            if (!signers[currentSigner])
+                return (false, Errors.SignerNotInCommittee); // signature is not in committee
             lastSigner = currentSigner;
         }
         return (true, Errors.NoError);
     }
 
-    function _getEthSignedMessageHash(bytes32 _messageHash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
+    function _getEthSignedMessageHash(
+        bytes32 _messageHash
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19Ethereum Signed Message:\n32",
+                    _messageHash
+                )
+            );
     }
 }

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 // Mock imports
-import { OFTMock } from "../contracts/mocks/OFTMock.sol";
-import { ERC20Mock } from "../contracts/mocks/ERC20Mock.sol";
-import { OFTComposerMock } from "../contracts/mocks/OFTComposerMock.sol";
+import { OFTMock } from "./mock/OFTMock.sol";
+import { ERC20Mock } from "./mock/ERC20Mock.sol";
+import { OFTComposerMock } from "./mock/OFTComposerMock.sol";
 
 // OApp imports
 import {
